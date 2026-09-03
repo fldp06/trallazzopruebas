@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRALLAZO · Ruleta de Chupitos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --morado: #1b0f3a;
+    --morado-2: #2a1a5e;
+    --rosa: #ff2e7e;
+    --amarillo: #ffd23f;
+    --turquesa: #0fd9c4;
+    --naranja: #ff6b35;
+    --texto: #fdf7ff;
+    /* Colores de la peña: naranja como base del fondo */
+    --fondo-1: #ff8a1e;
+    --fondo-2: #ff5f1f;
+    --fondo-3: #e64d00;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html, body{
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.18), transparent 45%),
+      radial-gradient(circle at 85% 15%, rgba(27,15,58,0.25), transparent 40%),
+      radial-gradient(circle at 50% 95%, rgba(27,15,58,0.35), transparent 45%),
+      linear-gradient(160deg, var(--fondo-1) 0%, var(--fondo-2) 55%, var(--fondo-3) 100%);
+    color: var(--texto);
+    font-family: 'Poppins', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  /* ---------- Encabezado ---------- */
+  header{
+    text-align: center;
+    padding: 2.2rem 1rem 0.6rem;
+  }
+
+  h1.titulo{
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: clamp(3rem, 12vw, 5.5rem);
+    margin: 0;
+    letter-spacing: 2px;
+    line-height: 1;
+    background: linear-gradient(90deg, var(--rosa), var(--amarillo) 45%, var(--turquesa) 90%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-stroke: 2px var(--morado);
+    filter: drop-shadow(0 4px 0 rgba(27,15,58,0.5));
+    transform: rotate(-2deg);
+  }
+
+  p.subtitulo{
+    margin: 0.4rem 0 0;
+    font-size: 1rem;
+    letter-spacing: 3px;
+    color: rgba(253, 247, 255, 0.6);
+  }
+
+  /* ---------- Zona de la ruleta ---------- */
+  main{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    padding: 1.5rem 1rem 4rem;
+  }
+
+  .zona-ruleta{
+    position: relative;
+    width: min(90vw, 420px);
+    height: min(90vw, 420px);
+  }
+
+  .puntero{
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 20px solid transparent;
+    border-right: 20px solid transparent;
+    border-top: 34px solid var(--amarillo);
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,0.4));
+    z-index: 5;
+  }
+
+  canvas#ruleta{
+    width: 100%;
+    height: 100%;
+    display: block;
+    border-radius: 50%;
+    box-shadow:
+      0 0 0 8px var(--morado-2),
+      0 0 0 11px rgba(255, 210, 63, 0.7),
+      0 20px 45px rgba(0,0,0,0.5);
+    transition: none;
+  }
+
+  .logo-central{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 27%;
+    height: 27%;
+    background: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 5px var(--amarillo), 0 6px 16px rgba(0,0,0,0.45);
+    z-index: 4;
+    overflow: hidden;
+  }
+
+  .logo-central img{
+    width: 78%;
+    height: 78%;
+    object-fit: contain;
+  }
+
+  /* ---------- Botón Girar ---------- */
+  button#btnGirar{
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    font-size: 1.7rem;
+    letter-spacing: 1px;
+    padding: 0.9rem 3.2rem;
+    border: none;
+    border-radius: 100px;
+    color: var(--morado);
+    background: linear-gradient(90deg, var(--amarillo), var(--turquesa));
+    cursor: pointer;
+    box-shadow: 0 8px 0 rgba(0,0,0,0.35), 0 14px 30px rgba(15,217,196,0.35);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+
+  button#btnGirar:hover{ filter: brightness(1.05); }
+
+  button#btnGirar:active{
+    transform: translateY(6px);
+    box-shadow: 0 2px 0 rgba(0,0,0,0.35), 0 6px 16px rgba(15,217,196,0.3);
+  }
+
+  button#btnGirar:disabled{
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  button#btnGirar:focus-visible{
+    outline: 3px solid var(--rosa);
+    outline-offset: 4px;
+  }
+
+  /* ---------- Aviso de resultado ---------- */
+  .overlay-resultado{
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 4, 26, 0.78);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .overlay-resultado.visible{
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .tarjeta-resultado{
+    text-align: center;
+    padding: 2.5rem 3rem;
+    border-radius: 28px;
+    background: linear-gradient(160deg, var(--morado-2), var(--morado));
+    box-shadow: 0 0 0 6px var(--amarillo), 0 25px 60px rgba(0,0,0,0.6);
+    transform: scale(0.7);
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .overlay-resultado.visible .tarjeta-resultado{
+    transform: scale(1);
+  }
+
+  .tarjeta-resultado p.eyebrow{
+    margin: 0 0 0.4rem;
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    color: var(--turquesa);
+  }
+
+  .tarjeta-resultado h2{
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: clamp(2.4rem, 9vw, 4rem);
+    margin: 0 0 1.6rem;
+    color: var(--amarillo);
+    text-shadow: 0 0 22px rgba(255,210,63,0.6);
+  }
+
+  .tarjeta-resultado button{
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 0.7rem 2rem;
+    border: none;
+    border-radius: 100px;
+    background: var(--rosa);
+    color: #fff;
+    cursor: pointer;
+  }
+
+  footer{
+    padding: 1rem;
+    font-size: 0.8rem;
+    color: rgba(253, 247, 255, 0.4);
+    text-align: center;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    canvas#ruleta{ transition-duration: 0.6s; }
+    .tarjeta-resultado{ transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 class="titulo">TRALLAZO</h1>
+  <p class="subtitulo">LA RULETA DEL CHUPITO</p>
+</header>
+
+<main>
+  <div class="zona-ruleta">
+    <div class="puntero"></div>
+    <canvas id="ruleta" width="600" height="600"></canvas>
+    <!-- Recuerda subir "logo-central.png" a la misma carpeta que este index.html en GitHub -->
+    <div class="logo-central">
+      <img src="logo-central.png" alt="Logo de la peña">
+    </div>
+  </div>
+
+  <button id="btnGirar">¡GIRAR!</button>
+</main>
+
+<footer>Bebe con responsabilidad. Prohibida su venta y consumo a menores de 18 años.</footer>
+
+<!-- Aviso de resultado -->
+<div class="overlay-resultado" id="overlayResultado">
+  <div class="tarjeta-resultado">
+    <p class="eyebrow">HA TOCADO</p>
+    <h2 id="textoResultado">¡TEQUILA!</h2>
+    <button id="btnCerrar">Volver a girar</button>
+  </div>
+</div>
+
+<script>
+  /* =========================================================================
+     CONFIGURACIÓN DE LA RULETA
+     -------------------------------------------------------------------------
+     Para AÑADIR o QUITAR bebidas, edita el array "opcionesChupitos" de abajo.
+     - Cada elemento es un objeto con dos propiedades:
+         nombre -> el texto que se muestra en el sector y en el aviso final
+         color  -> el color de fondo del sector (en formato hexadecimal)
+     - Puedes tener tantos elementos como quieras (mínimo 2). La ruleta
+       se recalcula y se dibuja automáticamente según el número de elementos.
+     - Si quieres que un color se repita menos, simplemente usa colores
+       distintos en la lista de "paletaColores" de más abajo, o defínelos
+       tú mismo en cada objeto.
+     ========================================================================= */
+  const opcionesChupitos = [
+    { nombre: "TEQUILA",     color: "#ff2e7e" },
+    { nombre: "RON",         color: "#ffd23f" },
+    { nombre: "VODKA",       color: "#0fd9c4" },
+    { nombre: "WHISKY",      color: "#ff6b35" },
+    { nombre: "JÄGERMEISTER",color: "#7b2ff7" },
+    { nombre: "GINEBRA",     color: "#00b894" },
+    { nombre: "SAMBUCA",     color: "#ff4d4d" },
+    { nombre: "ABSENTA",     color: "#2ecc71" }
+  ];
+  // Paleta de repuesto por si algún objeto no trae "color" definido
+  const paletaColores = ["#ff2e7e", "#ffd23f", "#0fd9c4", "#ff6b35", "#7b2ff7", "#00b894", "#ff4d4d", "#2ecc71"];
+
+  /* ========================================================================= */
+
+  const canvas = document.getElementById('ruleta');
+  const ctx = canvas.getContext('2d');
+  const btnGirar = document.getElementById('btnGirar');
+  const overlay = document.getElementById('overlayResultado');
+  const textoResultado = document.getElementById('textoResultado');
+  const btnCerrar = document.getElementById('btnCerrar');
+
+  const radio = canvas.width / 2;
+  const numSectores = opcionesChupitos.length;
+  const anguloSector = 360 / numSectores;
+
+  let rotacionAcumulada = 0;
+  let girando = false;
+
+  // --- Dibuja la ruleta completa según el array de opciones ---
+  function dibujarRuleta() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    opcionesChupitos.forEach((opcion, i) => {
+      const inicio = (i * anguloSector) * Math.PI / 180;
+      const fin = ((i + 1) * anguloSector) * Math.PI / 180;
+      const color = opcion.color || paletaColores[i % paletaColores.length];
+
+      // Sector
+      ctx.beginPath();
+      ctx.moveTo(radio, radio);
+      ctx.arc(radio, radio, radio - 6, inicio, fin);
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "#1b0f3a";
+      ctx.stroke();
+
+      // Texto del sector
+      ctx.save();
+      ctx.translate(radio, radio);
+      ctx.rotate((inicio + fin) / 2);
+      ctx.textAlign = "right";
+      ctx.fillStyle = "#1b0f3a";
+      ctx.font = "bold 26px 'Baloo 2', sans-serif";
+      ctx.fillText(opcion.nombre.toUpperCase(), radio - 34, 10);
+      ctx.restore();
+    });
+
+    // Borde exterior decorativo
+    ctx.beginPath();
+    ctx.arc(radio, radio, radio - 4, 0, Math.PI * 2);
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = "#ffd23f";
+    ctx.stroke();
+  }
+
+  // --- Calcula qué sector queda bajo el puntero tras girar ---
+  function calcularSectorGanador(rotacionFinal) {
+    // El puntero está fijo arriba, en el ángulo 270° del sistema del canvas
+    // (0° = 3 en punto, sentido horario). Buscamos qué ángulo original
+    // del dibujo ha quedado situado bajo esa posición tras la rotación.
+    let angulo = (270 - (rotacionFinal % 360) + 360) % 360;
+    let indice = Math.floor(angulo / anguloSector) % numSectores;
+    return opcionesChupitos[indice];
+  }
+
+  // --- Lógica del giro ---
+  // La animación se controla fotograma a fotograma con requestAnimationFrame
+  // en lugar de con una transición CSS. Esto permite:
+  //   1) Una curva de velocidad realista: arranca rápido y va frenando
+  //      progresivamente (easing "easeOutQuart") hasta detenerse del todo.
+  //   2) Mostrar el resultado en el mismo instante exacto en que la ruleta
+  //      se para, sin ningún retraso ni desajuste de tiempos.
+  function girarRuleta() {
+    if (girando) return;
+    girando = true;
+    btnGirar.disabled = true;
+
+    const duracionMs = 6000;               // duración total del giro
+    const vueltasCompletas = 8 + Math.floor(Math.random() * 4); // entre 8 y 11 vueltas
+    const extra = Math.random() * 360;      // punto de parada aleatorio
+    const rotacionInicial = rotacionAcumulada;
+    const rotacionObjetivo = rotacionInicial + vueltasCompletas * 360 + extra;
+    const diferencia = rotacionObjetivo - rotacionInicial;
+    const tiempoInicio = performance.now();
+
+    function easeOutQuart(t) {
+      // Empieza muy rápido y la deceleración se hace cada vez más suave
+      return 1 - Math.pow(1 - t, 4);
+    }
+
+    function frame(ahora) {
+      const transcurrido = ahora - tiempoInicio;
+      const t = Math.min(transcurrido / duracionMs, 1);
+      const tSuavizado = easeOutQuart(t);
+
+      rotacionAcumulada = rotacionInicial + diferencia * tSuavizado;
+      canvas.style.transform = `rotate(${rotacionAcumulada}deg)`;
+
+      if (t < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        // La ruleta acaba de pararse: mostramos el resultado al instante
+        girando = false;
+        btnGirar.disabled = false;
+        const ganador = calcularSectorGanador(rotacionAcumulada);
+        mostrarResultado(ganador.nombre);
+      }
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  // --- Muestra el aviso central con el chupito ganador ---
+  function mostrarResultado(nombre) {
+    textoResultado.textContent = `¡${nombre}!`;
+    overlay.classList.add('visible');
+  }
+
+  function cerrarResultado() {
+    overlay.classList.remove('visible');
+  }
+
+  btnGirar.addEventListener('click', girarRuleta);
+  btnCerrar.addEventListener('click', cerrarResultado);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) cerrarResultado();
+  });
+
+  // Dibujo inicial
+  dibujarRuleta();
+</script>
+
+</body>
+</html>
