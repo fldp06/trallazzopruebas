@@ -16,7 +16,6 @@
     --turquesa: #0fd9c4;
     --naranja: #ff6b35;
     --texto: #fdf7ff;
-    /* Colores de la peña: naranja como base del fondo */
     --fondo-1: #ff8a1e;
     --fondo-2: #ff5f1f;
     --fondo-3: #e64d00;
@@ -40,7 +39,6 @@
     overflow-x: hidden;
   }
 
-  /* ---------- Encabezado ---------- */
   header{
     text-align: center;
     padding: 2.2rem 1rem 0.6rem;
@@ -69,7 +67,6 @@
     color: rgba(253, 247, 255, 0.6);
   }
 
-  /* ---------- Zona de la ruleta ---------- */
   main{
     display: flex;
     flex-direction: column;
@@ -82,20 +79,6 @@
     position: relative;
     width: min(90vw, 420px);
     height: min(90vw, 420px);
-  }
-
-  .puntero{
-    position: absolute;
-    top: -14px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    border-left: 20px solid transparent;
-    border-right: 20px solid transparent;
-    border-top: 34px solid var(--amarillo);
-    filter: drop-shadow(0 3px 4px rgba(0,0,0,0.4));
-    z-index: 5;
   }
 
   canvas#ruleta{
@@ -133,7 +116,24 @@
     object-fit: contain;
   }
 
-  /* ---------- Botón Girar ---------- */
+  /* --- Estilos de la bola de casino 3D --- */
+  .bola {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: clamp(14px, 4vw, 22px);
+    height: clamp(14px, 4vw, 22px);
+    background: radial-gradient(circle at 35% 35%, #ffffff 0%, #e0e0e0 20%, #888888 60%, #333333 100%);
+    border-radius: 50%;
+    box-shadow: 
+      0 10px 15px rgba(0,0,0,0.5), 
+      inset -2px -2px 6px rgba(0,0,0,0.4);
+    z-index: 10;
+    pointer-events: none;
+    opacity: 0; 
+    transform: translate(-50%, -50%);
+  }
+
   button#btnGirar{
     font-family: 'Baloo 2', sans-serif;
     font-weight: 700;
@@ -162,12 +162,6 @@
     transform: none;
   }
 
-  button#btnGirar:focus-visible{
-    outline: 3px solid var(--rosa);
-    outline-offset: 4px;
-  }
-
-  /* ---------- Aviso de resultado ---------- */
   .overlay-resultado{
     position: fixed;
     inset: 0;
@@ -234,11 +228,6 @@
     color: rgba(253, 247, 255, 0.4);
     text-align: center;
   }
-
-  @media (prefers-reduced-motion: reduce){
-    canvas#ruleta{ transition-duration: 0.6s; }
-    .tarjeta-resultado{ transition: none; }
-  }
 </style>
 </head>
 <body>
@@ -250,20 +239,21 @@
 
 <main>
   <div class="zona-ruleta">
-    <div class="puntero"></div>
     <canvas id="ruleta" width="600" height="600"></canvas>
-    <!-- Recuerda subir "logo-central.png" a la misma carpeta que este index.html en GitHub -->
+    
     <div class="logo-central">
-      <img src="logo-central.png" alt="Logo de la peña">
+      <img src="image.png" alt="Logo de la peña">
     </div>
+    
+    <!-- Bola animada -->
+    <div class="bola" id="bola"></div>
   </div>
 
   <button id="btnGirar">¡GIRAR!</button>
 </main>
 
-<footer>Bebe con responsabilidad. Prohibida su venta y consumo a menores de 18 años.</footer>
+<footer>PATROCINADO POR PEÑA TRALLAZO</footer>
 
-<!-- Aviso de resultado -->
 <div class="overlay-resultado" id="overlayResultado">
   <div class="tarjeta-resultado">
     <p class="eyebrow">HA TOCADO</p>
@@ -273,33 +263,18 @@
 </div>
 
 <script>
-  /* =========================================================================
-     CONFIGURACIÓN DE LA RULETA
-     -------------------------------------------------------------------------
-     Para AÑADIR o QUITAR bebidas, edita el array "opcionesChupitos" de abajo.
-     - Cada elemento es un objeto con dos propiedades:
-         nombre -> el texto que se muestra en el sector y en el aviso final
-         color  -> el color de fondo del sector (en formato hexadecimal)
-     - Puedes tener tantos elementos como quieras (mínimo 2). La ruleta
-       se recalcula y se dibuja automáticamente según el número de elementos.
-     - Si quieres que un color se repita menos, simplemente usa colores
-       distintos en la lista de "paletaColores" de más abajo, o defínelos
-       tú mismo en cada objeto.
-     ========================================================================= */
   const opcionesChupitos = [
-    { nombre: "TEQUILA",     color: "#ff2e7e" },
-    { nombre: "RON",         color: "#ffd23f" },
-    { nombre: "VODKA",       color: "#0fd9c4" },
-    { nombre: "WHISKY",      color: "#ff6b35" },
-    { nombre: "JÄGERMEISTER",color: "#7b2ff7" },
-    { nombre: "GINEBRA",     color: "#00b894" },
-    { nombre: "SAMBUCA",     color: "#ff4d4d" },
-    { nombre: "ABSENTA",     color: "#2ecc71" }
+    { nombre: "TEQUILA",      color: "#ff2e7e" },
+    { nombre: "RON",          color: "#ffd23f" },
+    { nombre: "VODKA",        color: "#0fd9c4" },
+    { nombre: "WHISKY",       color: "#ff6b35" },
+    { nombre: "JÄGERMEISTER", color: "#7b2ff7" },
+    { nombre: "GINEBRA",      color: "#00b894" },
+    { nombre: "PACHARAN",     color: "#ff4d4d" },
+    { nombre: "BOLETUS",      color: "#f54927" }
   ];
-  // Paleta de repuesto por si algún objeto no trae "color" definido
+  
   const paletaColores = ["#ff2e7e", "#ffd23f", "#0fd9c4", "#ff6b35", "#7b2ff7", "#00b894", "#ff4d4d", "#2ecc71"];
-
-  /* ========================================================================= */
 
   const canvas = document.getElementById('ruleta');
   const ctx = canvas.getContext('2d');
@@ -307,6 +282,7 @@
   const overlay = document.getElementById('overlayResultado');
   const textoResultado = document.getElementById('textoResultado');
   const btnCerrar = document.getElementById('btnCerrar');
+  const bola = document.getElementById('bola');
 
   const radio = canvas.width / 2;
   const numSectores = opcionesChupitos.length;
@@ -315,7 +291,6 @@
   let rotacionAcumulada = 0;
   let girando = false;
 
-  // --- Dibuja la ruleta completa según el array de opciones ---
   function dibujarRuleta() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -324,7 +299,6 @@
       const fin = ((i + 1) * anguloSector) * Math.PI / 180;
       const color = opcion.color || paletaColores[i % paletaColores.length];
 
-      // Sector
       ctx.beginPath();
       ctx.moveTo(radio, radio);
       ctx.arc(radio, radio, radio - 6, inicio, fin);
@@ -335,7 +309,6 @@
       ctx.strokeStyle = "#1b0f3a";
       ctx.stroke();
 
-      // Texto del sector
       ctx.save();
       ctx.translate(radio, radio);
       ctx.rotate((inicio + fin) / 2);
@@ -346,7 +319,6 @@
       ctx.restore();
     });
 
-    // Borde exterior decorativo
     ctx.beginPath();
     ctx.arc(radio, radio, radio - 4, 0, Math.PI * 2);
     ctx.lineWidth = 6;
@@ -354,64 +326,84 @@
     ctx.stroke();
   }
 
-  // --- Calcula qué sector queda bajo el puntero tras girar ---
-  function calcularSectorGanador(rotacionFinal) {
-    // El puntero está fijo arriba, en el ángulo 270° del sistema del canvas
-    // (0° = 3 en punto, sentido horario). Buscamos qué ángulo original
-    // del dibujo ha quedado situado bajo esa posición tras la rotación.
-    let angulo = (270 - (rotacionFinal % 360) + 360) % 360;
-    let indice = Math.floor(angulo / anguloSector) % numSectores;
-    return opcionesChupitos[indice];
-  }
-
-  // --- Lógica del giro ---
-  // La animación se controla fotograma a fotograma con requestAnimationFrame
-  // en lugar de con una transición CSS. Esto permite:
-  //   1) Una curva de velocidad realista: arranca rápido y va frenando
-  //      progresivamente (easing "easeOutQuart") hasta detenerse del todo.
-  //   2) Mostrar el resultado en el mismo instante exacto en que la ruleta
-  //      se para, sin ningún retraso ni desajuste de tiempos.
   function girarRuleta() {
     if (girando) return;
     girando = true;
     btnGirar.disabled = true;
+    bola.style.opacity = 1;
 
-    const duracionMs = 6000;               // duración total del giro
-    const vueltasCompletas = 8 + Math.floor(Math.random() * 4); // entre 8 y 11 vueltas
-    const extra = Math.random() * 360;      // punto de parada aleatorio
+    const duracionMs = 7000; 
+    
+    // 1. Decidir el ganador aleatoriamente antes de girar
+    const indiceGanador = Math.floor(Math.random() * numSectores);
+    
+    // 2. Calcular rotación de la ruleta
+    const vueltasRuleta = 5 + Math.floor(Math.random() * 3);
+    const extra = Math.random() * 360;
     const rotacionInicial = rotacionAcumulada;
-    const rotacionObjetivo = rotacionInicial + vueltasCompletas * 360 + extra;
+    const rotacionObjetivo = rotacionInicial + vueltasRuleta * 360 + extra;
     const diferencia = rotacionObjetivo - rotacionInicial;
+    
+    // 3. Calcular dónde debe terminar la bola exactamente (en el centro del sector ganador)
+    const anguloCentroSector = (indiceGanador * anguloSector) + (anguloSector / 2);
+    const anguloFinalBola = rotacionObjetivo + anguloCentroSector;
+    
     const tiempoInicio = performance.now();
 
-    function easeOutQuart(t) {
-      // Empieza muy rápido y la deceleración se hace cada vez más suave
-      return 1 - Math.pow(1 - t, 4);
-    }
+    // Curva de frenado suave
+    function easeOutQuart(t) { return 1 - Math.pow(1 - t, 4); }
 
     function frame(ahora) {
       const transcurrido = ahora - tiempoInicio;
       const t = Math.min(transcurrido / duracionMs, 1);
       const tSuavizado = easeOutQuart(t);
 
+      // Rotar la rueda (sentido horario)
       rotacionAcumulada = rotacionInicial + diferencia * tSuavizado;
       canvas.style.transform = `rotate(${rotacionAcumulada}deg)`;
+
+      // FÍSICAS DE LA BOLA
+      // 1. Ángulo: Empieza girando rápido en sentido contrario y frena hasta alinearse con el sector
+      const anguloBolaActual = anguloFinalBola - (1 - tSuavizado) * 360 * 12; // 12 vueltas de bola
+      const radianes = anguloBolaActual * Math.PI / 180;
+
+      // 2. Radio: Empieza en el borde exterior (46%) y cae al interior (27%) al final
+      let radioPorcentaje = 46; 
+      if (tSuavizado > 0.5) {
+        // En la segunda mitad del tiempo, la bola empieza a caer hacia el centro
+        const caida = (tSuavizado - 0.5) / 0.5;
+        radioPorcentaje = 46 - (caida * 19); 
+      }
+
+      // 3. Efecto 3D de rebote: Modificando la escala para simular altura
+      let escala = 1;
+      if (tSuavizado > 0.4 && tSuavizado < 0.95) {
+        // Rebotes rápidos que van perdiendo fuerza
+        const rebotes = Math.max(0, Math.sin(tSuavizado * Math.PI * 30)); 
+        const perdidaFuerza = 1 - tSuavizado;
+        escala = 1 + (rebotes * perdidaFuerza * 1.5); 
+      }
+
+      // 4. Posicionar la bola
+      const bolaX = Math.cos(radianes) * radioPorcentaje;
+      const bolaY = Math.sin(radianes) * radioPorcentaje;
+      
+      bola.style.left = `calc(50% + ${bolaX}%)`;
+      bola.style.top = `calc(50% + ${bolaY}%)`;
+      bola.style.transform = `translate(-50%, -50%) scale(${escala})`;
 
       if (t < 1) {
         requestAnimationFrame(frame);
       } else {
-        // La ruleta acaba de pararse: mostramos el resultado al instante
         girando = false;
         btnGirar.disabled = false;
-        const ganador = calcularSectorGanador(rotacionAcumulada);
-        mostrarResultado(ganador.nombre);
+        mostrarResultado(opcionesChupitos[indiceGanador].nombre);
       }
     }
 
     requestAnimationFrame(frame);
   }
 
-  // --- Muestra el aviso central con el chupito ganador ---
   function mostrarResultado(nombre) {
     textoResultado.textContent = `¡${nombre}!`;
     overlay.classList.add('visible');
@@ -427,7 +419,6 @@
     if (e.target === overlay) cerrarResultado();
   });
 
-  // Dibujo inicial
   dibujarRuleta();
 </script>
 
