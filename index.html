@@ -16,6 +16,7 @@
     --turquesa: #0fd9c4;
     --naranja: #ff6b35;
     --texto: #fdf7ff;
+    /* Colores de la peña: naranja como base del fondo */
     --fondo-1: #ff8a1e;
     --fondo-2: #ff5f1f;
     --fondo-3: #e64d00;
@@ -39,6 +40,7 @@
     overflow-x: hidden;
   }
 
+  /* ---------- Encabezado ---------- */
   header{
     text-align: center;
     padding: 2.2rem 1rem 0.6rem;
@@ -67,11 +69,12 @@
     color: rgba(253, 247, 255, 0.6);
   }
 
+  /* ---------- Zona de la ruleta ---------- */
   main{
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2rem;
+    gap: 2.5rem;
     padding: 1.5rem 1rem 4rem;
   }
 
@@ -79,6 +82,27 @@
     position: relative;
     width: min(90vw, 420px);
     height: min(90vw, 420px);
+    perspective: 1400px;
+  }
+
+  .zona-ruleta::after{
+    content: "";
+    position: absolute;
+    left: 8%;
+    right: 8%;
+    bottom: -6%;
+    height: 22%;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0.55), transparent 70%);
+    z-index: -1;
+    filter: blur(4px);
+  }
+
+  .plato-3d{
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transform: rotateX(22deg);
   }
 
   canvas#ruleta{
@@ -86,11 +110,7 @@
     height: 100%;
     display: block;
     border-radius: 50%;
-    box-shadow:
-      0 0 0 8px var(--morado-2),
-      0 0 0 11px rgba(255, 210, 63, 0.7),
-      0 20px 45px rgba(0,0,0,0.5);
-    transition: none;
+    box-shadow: 0 30px 40px rgba(0,0,0,0.55);
   }
 
   .logo-central{
@@ -116,24 +136,7 @@
     object-fit: contain;
   }
 
-  /* --- Estilos de la bola de casino 3D --- */
-  .bola {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: clamp(14px, 4vw, 22px);
-    height: clamp(14px, 4vw, 22px);
-    background: radial-gradient(circle at 35% 35%, #ffffff 0%, #e0e0e0 20%, #888888 60%, #333333 100%);
-    border-radius: 50%;
-    box-shadow: 
-      0 10px 15px rgba(0,0,0,0.5), 
-      inset -2px -2px 6px rgba(0,0,0,0.4);
-    z-index: 10;
-    pointer-events: none;
-    opacity: 0; 
-    transform: translate(-50%, -50%);
-  }
-
+  /* ---------- Botón Girar ---------- */
   button#btnGirar{
     font-family: 'Baloo 2', sans-serif;
     font-weight: 700;
@@ -162,6 +165,12 @@
     transform: none;
   }
 
+  button#btnGirar:focus-visible{
+    outline: 3px solid var(--rosa);
+    outline-offset: 4px;
+  }
+
+  /* ---------- Aviso de resultado ---------- */
   .overlay-resultado{
     position: fixed;
     inset: 0;
@@ -228,6 +237,11 @@
     color: rgba(253, 247, 255, 0.4);
     text-align: center;
   }
+
+  @media (prefers-reduced-motion: reduce){
+    .plato-3d{ transform: none; }
+    .tarjeta-resultado{ transition: none; }
+  }
 </style>
 </head>
 <body>
@@ -239,14 +253,12 @@
 
 <main>
   <div class="zona-ruleta">
-    <canvas id="ruleta" width="600" height="600"></canvas>
-    
-    <div class="logo-central">
-      <img src="image.png" alt="Logo de la peña">
+    <div class="plato-3d">
+      <canvas id="ruleta" width="600" height="600"></canvas>
+      <div class="logo-central">
+        <img src="image.png" alt="Logo de la peña">
+      </div>
     </div>
-    
-    <!-- Bola animada -->
-    <div class="bola" id="bola"></div>
   </div>
 
   <button id="btnGirar">¡GIRAR!</button>
@@ -254,6 +266,7 @@
 
 <footer>PATROCINADO POR PEÑA TRALLAZO</footer>
 
+<!-- Aviso de resultado -->
 <div class="overlay-resultado" id="overlayResultado">
   <div class="tarjeta-resultado">
     <p class="eyebrow">HA TOCADO</p>
@@ -263,6 +276,13 @@
 </div>
 
 <script>
+  /* =========================================================================
+     CONFIGURACIÓN DE LA RULETA
+     -------------------------------------------------------------------------
+     Para AÑADIR o QUITAR bebidas, edita el array "opcionesChupitos" de abajo.
+     - nombre -> texto que aparece en el sector y en el aviso final
+     - color  -> color de fondo del sector (hexadecimal)
+     ========================================================================= */
   const opcionesChupitos = [
     { nombre: "TEQUILA",      color: "#ff2e7e" },
     { nombre: "RON",          color: "#ffd23f" },
@@ -273,8 +293,10 @@
     { nombre: "PACHARAN",     color: "#ff4d4d" },
     { nombre: "BOLETUS",      color: "#f54927" }
   ];
-  
+  // Paleta de repuesto por si algún objeto no trae "color" definido
   const paletaColores = ["#ff2e7e", "#ffd23f", "#0fd9c4", "#ff6b35", "#7b2ff7", "#00b894", "#ff4d4d", "#2ecc71"];
+
+  /* ========================================================================= */
 
   const canvas = document.getElementById('ruleta');
   const ctx = canvas.getContext('2d');
@@ -282,17 +304,85 @@
   const overlay = document.getElementById('overlayResultado');
   const textoResultado = document.getElementById('textoResultado');
   const btnCerrar = document.getElementById('btnCerrar');
-  const bola = document.getElementById('bola');
 
-  const radio = canvas.width / 2;
+  const centro = canvas.width / 2;
   const numSectores = opcionesChupitos.length;
   const anguloSector = 360 / numSectores;
 
-  let rotacionAcumulada = 0;
+  /* -------------------------------------------------------------------------
+     GEOMETRÍA DEL PLATO
+     ------------------------------------------------------------------------- */
+  const radioBowlExt   = centro * 0.99;
+  const radioBowlInt   = centro * 0.89;
+  const radioPista     = centro * 0.82;
+  const radioDiamantes = centro * 0.745;
+  const radioRueda     = centro * 0.68;
+  const radioReposo    = radioRueda * 0.7;
+  const radioCubo      = centro * 0.29;
+  const numDiamantes   = 8;
+
   let girando = false;
 
-  function dibujarRuleta() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  /* --------------------------------------------------------------------- */
+  /* 1) PARTE FIJA                                                         */
+  /* --------------------------------------------------------------------- */
+  function dibujarDiamante(x, y, anguloRad) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(anguloRad);
+    const s = 9;
+    const brillo = ctx.createLinearGradient(-s, -s, s, s);
+    brillo.addColorStop(0, "#fff6d6");
+    brillo.addColorStop(0.5, "#d4af37");
+    brillo.addColorStop(1, "#7a5c14");
+    ctx.beginPath();
+    ctx.moveTo(0, -s); ctx.lineTo(s, 0); ctx.lineTo(0, s); ctx.lineTo(-s, 0);
+    ctx.closePath();
+    ctx.fillStyle = brillo;
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(0,0,0,0.45)";
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function dibujarBowlEstatica() {
+    ctx.beginPath();
+    ctx.arc(centro, centro, radioBowlExt, 0, Math.PI * 2);
+    const madera = ctx.createRadialGradient(centro, centro, radioBowlInt, centro, centro, radioBowlExt);
+    madera.addColorStop(0, "#4a2a12");
+    madera.addColorStop(1, "#2a1608");
+    ctx.fillStyle = madera;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(centro, centro, radioBowlInt, 0, Math.PI * 2);
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "#d4af37";
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(centro, centro, (radioBowlInt + radioDiamantes) / 2, 0, Math.PI * 2);
+    ctx.lineWidth = radioBowlInt - radioDiamantes;
+    ctx.strokeStyle = "#6b4a26";
+    ctx.stroke();
+
+    for (let i = 0; i < numDiamantes; i++) {
+      const ang = (i * 360 / numDiamantes) * Math.PI / 180;
+      const x = centro + radioDiamantes * Math.cos(ang);
+      const y = centro + radioDiamantes * Math.sin(ang);
+      dibujarDiamante(x, y, ang);
+    }
+  }
+
+  /* --------------------------------------------------------------------- */
+  /* 2) PARTE GIRATORIA                                                    */
+  /* --------------------------------------------------------------------- */
+  function dibujarRuedaGiratoria(rotacionGrados) {
+    ctx.save();
+    ctx.translate(centro, centro);
+    ctx.rotate(rotacionGrados * Math.PI / 180);
+    ctx.translate(-centro, -centro);
 
     opcionesChupitos.forEach((opcion, i) => {
       const inicio = (i * anguloSector) * Math.PI / 180;
@@ -300,101 +390,188 @@
       const color = opcion.color || paletaColores[i % paletaColores.length];
 
       ctx.beginPath();
-      ctx.moveTo(radio, radio);
-      ctx.arc(radio, radio, radio - 6, inicio, fin);
+      ctx.moveTo(centro, centro);
+      ctx.arc(centro, centro, radioRueda, inicio, fin);
       ctx.closePath();
       ctx.fillStyle = color;
       ctx.fill();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = "#1b0f3a";
-      ctx.stroke();
 
       ctx.save();
-      ctx.translate(radio, radio);
+      ctx.translate(centro, centro);
+      ctx.rotate(inicio);
+      ctx.beginPath();
+      ctx.moveTo(radioCubo, 0);
+      ctx.lineTo(radioRueda, 0);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "#d4af37";
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(centro, centro);
       ctx.rotate((inicio + fin) / 2);
       ctx.textAlign = "right";
       ctx.fillStyle = "#1b0f3a";
-      ctx.font = "bold 26px 'Baloo 2', sans-serif";
-      ctx.fillText(opcion.nombre.toUpperCase(), radio - 34, 10);
+      ctx.font = "bold 15px 'Baloo 2', sans-serif";
+      ctx.fillText(opcion.nombre.toUpperCase(), radioRueda - 10, 5);
       ctx.restore();
     });
 
     ctx.beginPath();
-    ctx.arc(radio, radio, radio - 4, 0, Math.PI * 2);
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = "#ffd23f";
+    ctx.arc(centro, centro, radioRueda, 0, Math.PI * 2);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "#1b0f3a";
     ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(centro, centro, radioCubo, 0, Math.PI * 2);
+    ctx.fillStyle = "#d4af37";
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#7a5c14";
+    ctx.stroke();
+
+    ctx.restore();
   }
 
+  /* --------------------------------------------------------------------- */
+  /* 3) LA BOLA                                                            */
+  /* --------------------------------------------------------------------- */
+  function dibujarBola(anguloGrados, radioPx, alturaPx) {
+    const anguloRad = anguloGrados * Math.PI / 180;
+    const x = centro + radioPx * Math.cos(anguloRad);
+    const y = centro + radioPx * Math.sin(anguloRad);
+    const radioBolita = 9;
+
+    const escalaSombra = 1 - Math.min(alturaPx / 18, 0.6);
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(x, y + 2, radioBolita * 0.9 * escalaSombra, radioBolita * 0.45 * escalaSombra, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,0.4)";
+    ctx.fill();
+    ctx.restore();
+
+    const yBola = y - alturaPx;
+    const brillo = ctx.createRadialGradient(
+      x - radioBolita * 0.35, yBola - radioBolita * 0.35, radioBolita * 0.1,
+      x, yBola, radioBolita
+    );
+    brillo.addColorStop(0, "#ffffff");
+    brillo.addColorStop(0.5, "#f1f1f1");
+    brillo.addColorStop(1, "#9a9a9a");
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, yBola, radioBolita, 0, Math.PI * 2);
+    ctx.fillStyle = brillo;
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* --------------------------------------------------------------------- */
+  /* Utilidades                                                            */
+  /* --------------------------------------------------------------------- */
+  function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+  function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+  function normalizar360(g) { return ((g % 360) + 360) % 360; }
+
+  let rotacionRuedaActual = 0;
+  let anguloBolaActual = anguloSector * 0.5;
+  let anguloObjetivoLocalGlobal = anguloSector * 0.5; // Guardamos la posición local para la bola
+
+  /* --------------------------------------------------------------------- */
+  /* LÓGICA DEL GIRO                                                       */
+  /* --------------------------------------------------------------------- */
   function girarRuleta() {
     if (girando) return;
     girando = true;
     btnGirar.disabled = true;
-    bola.style.opacity = 1;
+    overlay.classList.remove('visible');
 
-    const duracionMs = 7000; 
-    
-    // 1. Decidir el ganador aleatoriamente antes de girar
     const indiceGanador = Math.floor(Math.random() * numSectores);
+    const centroSector = (indiceGanador + 0.5) * anguloSector;
+    const margen = anguloSector * 0.28;
     
-    // 2. Calcular rotación de la ruleta
-    const vueltasRuleta = 5 + Math.floor(Math.random() * 3);
-    const extra = Math.random() * 360;
-    const rotacionInicial = rotacionAcumulada;
-    const rotacionObjetivo = rotacionInicial + vueltasRuleta * 360 + extra;
-    const diferencia = rotacionObjetivo - rotacionInicial;
-    
-    // 3. Calcular dónde debe terminar la bola exactamente (en el centro del sector ganador)
-    const anguloCentroSector = (indiceGanador * anguloSector) + (anguloSector / 2);
-    const anguloFinalBola = rotacionObjetivo + anguloCentroSector;
-    
-    const tiempoInicio = performance.now();
+    // Este valor determina dónde caerá la bola respecto al inicio de la rueda
+    anguloObjetivoLocalGlobal = normalizar360(centroSector + (Math.random() * 2 - 1) * margen);
 
-    // Curva de frenado suave
-    function easeOutQuart(t) { return 1 - Math.pow(1 - t, 4); }
+    const duracionMs = 7200;
+    const vueltasRueda = 4 + Math.random() * 2.5;
+    const rotacionRuedaInicio = rotacionRuedaActual;
+    const deltaRueda = vueltasRueda * 360;
+    const rotacionRuedaFinal = rotacionRuedaInicio + deltaRueda;
+
+    function rotacionRueda(t) {
+      return rotacionRuedaInicio + deltaRueda * easeOutCubic(t);
+    }
+
+    const p1 = 0.45;
+    const p2 = 0.82;
+
+    const anguloEnganche = normalizar360(anguloObjetivoLocalGlobal + rotacionRueda(p2));
+
+    const vueltasBola = 10 + Math.random() * 4;
+    const anguloBolaInicio = anguloBolaActual;
+    const inicioNormalizado = normalizar360(anguloBolaInicio);
+    const ajusteFinal = normalizar360(inicioNormalizado - anguloEnganche);
+    const diferenciaAngulo = -(vueltasBola * 360 + ajusteFinal);
+
+    const tiempoInicio = performance.now();
 
     function frame(ahora) {
       const transcurrido = ahora - tiempoInicio;
       const t = Math.min(transcurrido / duracionMs, 1);
-      const tSuavizado = easeOutQuart(t);
 
-      // Rotar la rueda (sentido horario)
-      rotacionAcumulada = rotacionInicial + diferencia * tSuavizado;
-      canvas.style.transform = `rotate(${rotacionAcumulada}deg)`;
+      const rotRueda = rotacionRueda(t);
 
-      // FÍSICAS DE LA BOLA
-      // 1. Ángulo: Empieza girando rápido en sentido contrario y frena hasta alinearse con el sector
-      const anguloBolaActual = anguloFinalBola - (1 - tSuavizado) * 360 * 12; // 12 vueltas de bola
-      const radianes = anguloBolaActual * Math.PI / 180;
+      let anguloBolaAbs;
+      if (t <= p2) {
+        const t2 = t / p2;
+        let angulo = anguloBolaInicio + diferenciaAngulo * easeOutCubic(t2);
 
-      // 2. Radio: Empieza en el borde exterior (46%) y cae al interior (27%) al final
-      let radioPorcentaje = 46; 
-      if (tSuavizado > 0.5) {
-        // En la segunda mitad del tiempo, la bola empieza a caer hacia el centro
-        const caida = (tSuavizado - 0.5) / 0.5;
-        radioPorcentaje = 46 - (caida * 19); 
+        if (t > p1) {
+          const localB = (t - p1) / (p2 - p1);
+          const rebote = 9 * (1 - localB) * Math.sin(localB * 16 * Math.PI);
+          angulo += rebote;
+        }
+        anguloBolaAbs = angulo;
+      } else {
+        anguloBolaAbs = anguloObjetivoLocalGlobal + rotRueda;
       }
 
-      // 3. Efecto 3D de rebote: Modificando la escala para simular altura
-      let escala = 1;
-      if (tSuavizado > 0.4 && tSuavizado < 0.95) {
-        // Rebotes rápidos que van perdiendo fuerza
-        const rebotes = Math.max(0, Math.sin(tSuavizado * Math.PI * 30)); 
-        const perdidaFuerza = 1 - tSuavizado;
-        escala = 1 + (rebotes * perdidaFuerza * 1.5); 
+      let radioBola;
+      if (t <= p1) {
+        radioBola = radioPista + Math.sin(t * 70) * 2.5;
+      } else if (t <= p2) {
+        const localB = (t - p1) / (p2 - p1);
+        const caidaPrincipal = radioPista + (radioReposo - radioPista) * easeInOutCubic(localB);
+        const reboteRadio = 10 * (1 - localB) * Math.abs(Math.sin(localB * 16 * Math.PI));
+        radioBola = caidaPrincipal + reboteRadio;
+      } else {
+        radioBola = radioReposo;
       }
 
-      // 4. Posicionar la bola
-      const bolaX = Math.cos(radianes) * radioPorcentaje;
-      const bolaY = Math.sin(radianes) * radioPorcentaje;
-      
-      bola.style.left = `calc(50% + ${bolaX}%)`;
-      bola.style.top = `calc(50% + ${bolaY}%)`;
-      bola.style.transform = `translate(-50%, -50%) scale(${escala})`;
+      let alturaBola = 0;
+      if (t > p1 && t <= p2) {
+        const localB = (t - p1) / (p2 - p1);
+        alturaBola = 10 * (1 - localB) * Math.abs(Math.sin(localB * 16 * Math.PI));
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      dibujarBowlEstatica();
+      dibujarRuedaGiratoria(rotRueda);
+      dibujarBola(anguloBolaAbs, radioBola, alturaBola);
 
       if (t < 1) {
         requestAnimationFrame(frame);
       } else {
+        // Fijamos los valores finales basados directamente en el objetivo
+        rotacionRuedaActual = rotacionRuedaFinal;
+        anguloBolaActual = anguloObjetivoLocalGlobal + rotacionRuedaActual; 
+        
         girando = false;
         btnGirar.disabled = false;
         mostrarResultado(opcionesChupitos[indiceGanador].nombre);
@@ -419,7 +596,9 @@
     if (e.target === overlay) cerrarResultado();
   });
 
-  dibujarRuleta();
+  dibujarBowlEstatica();
+  dibujarRuedaGiratoria(rotacionRuedaActual);
+  dibujarBola(anguloBolaActual, radioReposo, 0);
 </script>
 
 </body>
