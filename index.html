@@ -84,8 +84,8 @@
      estas dos propiedades, como si miráramos la ruleta desde arriba. */
   .zona-ruleta{
     position: relative;
-    width: min(90vw, 420px);
-    height: min(90vw, 420px);
+    width: min(94vw, 560px);
+    height: min(94vw, 560px);
     perspective: 1400px;
   }
 
@@ -262,7 +262,7 @@
          Todo lo que va dentro (canvas de la ruleta + logo) hereda esa
          inclinación, dando el efecto de mesa de casino vista en ángulo. -->
     <div class="plato-3d">
-      <canvas id="ruleta" width="600" height="600"></canvas>
+      <canvas id="ruleta" width="700" height="700"></canvas>
       <div class="logo-central">
         <img src="image.png" alt="Logo de la peña">
       </div>
@@ -465,8 +465,15 @@
       ctx.rotate((inicio + fin) / 2);
       ctx.textAlign = "right";
       ctx.fillStyle = "#1b0f3a";
-      ctx.font = "bold 15px 'Baloo 2', sans-serif";
-      ctx.fillText(opcion.nombre.toUpperCase(), radioRueda - 10, 5);
+      const textoNombre = opcion.nombre.toUpperCase();
+      const anchoDisponible = (radioRueda - 14) - (radioCubo + 6);
+      let tamanoFuente = 20;
+      ctx.font = `bold ${tamanoFuente}px 'Baloo 2', sans-serif`;
+      while (ctx.measureText(textoNombre).width > anchoDisponible && tamanoFuente > 11) {
+        tamanoFuente -= 1;
+        ctx.font = `bold ${tamanoFuente}px 'Baloo 2', sans-serif`;
+      }
+      ctx.fillText(textoNombre, radioRueda - 10, 5);
       ctx.restore();
     });
 
