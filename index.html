@@ -78,6 +78,10 @@
     padding: 1.5rem 1rem 4rem;
   }
 
+  /* Contenedor con perspectiva: es lo que da la sensación 3D.
+     Todo lo que hay dentro de .plato-3d se dibuja "plano" (canvas 2D
+     normal) pero el navegador lo proyecta en perspectiva gracias a
+     estas dos propiedades, como si miráramos la ruleta desde arriba. */
   .zona-ruleta{
     position: relative;
     width: min(90vw, 420px);
@@ -85,6 +89,7 @@
     perspective: 1400px;
   }
 
+  /* Sombra de "mesa" bajo la ruleta para reforzar la sensación de volumen */
   .zona-ruleta::after{
     content: "";
     position: absolute;
@@ -253,6 +258,9 @@
 
 <main>
   <div class="zona-ruleta">
+    <!-- .plato-3d es el elemento inclinado en 3D (perspective + rotateX).
+         Todo lo que va dentro (canvas de la ruleta + logo) hereda esa
+         inclinación, dando el efecto de mesa de casino vista en ángulo. -->
     <div class="plato-3d">
       <canvas id="ruleta" width="600" height="600"></canvas>
       <div class="logo-central">
@@ -305,26 +313,39 @@
   const textoResultado = document.getElementById('textoResultado');
   const btnCerrar = document.getElementById('btnCerrar');
 
-  const centro = canvas.width / 2;
+  const centro = canvas.width / 2;           // 300: centro del canvas (también el eje de giro)
   const numSectores = opcionesChupitos.length;
   const anguloSector = 360 / numSectores;
 
   /* -------------------------------------------------------------------------
      GEOMETRÍA DEL PLATO
+     El plato tiene dos partes bien diferenciadas, como en una ruleta real:
+       - La "bola" (aro de madera + metal + deflectores): es FIJA, no gira.
+       - La "rueda" (sectores de colores con los nombres): SÍ gira.
      ------------------------------------------------------------------------- */
-  const radioBowlExt   = centro * 0.99;
-  const radioBowlInt   = centro * 0.89;
-  const radioPista     = centro * 0.82;
-  const radioDiamantes = centro * 0.745;
-  const radioRueda     = centro * 0.68;
-  const radioReposo    = radioRueda * 0.7;
-  const radioCubo      = centro * 0.29;
-  const numDiamantes   = 8;
+  const radioBowlExt   = centro * 0.99;  // borde exterior (madera oscura)
+  const radioBowlInt   = centro * 0.89;  // aro dorado que separa madera de pista
+  const radioPista     = centro * 0.82;  // radio donde "rueda" la bola al principio
+  const radioDiamantes = centro * 0.745; // radio de los deflectores metálicos fijos
+  const radioRueda     = centro * 0.68;  // borde exterior de la rueda giratoria
+  const radioReposo    = radioRueda * 0.7; // radio donde la bola queda encajada
+  const radioCubo      = centro * 0.29;  // aro metálico alrededor del logo central
+  const numDiamantes   = 8;              // nº de deflectores fijos en la pista
+
+  /* -------------------------------------------------------------------------
+     MARCADOR FIJO (la "aguja" de la ruleta)
+     La bola SIEMPRE termina cayendo exactamente en este ángulo absoluto,
+     que no cambia nunca. El sector ganador es, por definición, el que la
+     rueda deja bajo este punto al detenerse. Así, el resultado anunciado
+     y el sitio donde "se ve" caer la bola son la misma cosa por
+     construcción: no hay manera de que se desincronicen.
+     ------------------------------------------------------------------------- */
+  const ANGULO_MARCADOR = 270; // arriba del todo (las 12 en punto)
 
   let girando = false;
 
   /* --------------------------------------------------------------------- */
-  /* 1) PARTE FIJA                                                         */
+  /* 1) PARTE FIJA: aro exterior + pista + deflectores (no gira nunca)     */
   /* --------------------------------------------------------------------- */
   function dibujarDiamante(x, y, anguloRad) {
     ctx.save();
@@ -346,7 +367,31 @@
     ctx.restore();
   }
 
+  // Flecha fija que señala ANGULO_MARCADOR: nunca gira, es el punto de
+  // referencia visual de "aquí es donde cae la bola".
+  function dibujarMarcador() {
+    const anguloRad = ANGULO_MARCADOR * Math.PI / 180;
+    ctx.save();
+    ctx.translate(centro, centro);
+    ctx.rotate(anguloRad);
+    const puntaX = radioRueda - 4;
+    const baseX = radioBowlInt + 6;
+    const semiancho = 10;
+    ctx.beginPath();
+    ctx.moveTo(puntaX, 0);
+    ctx.lineTo(baseX, -semiancho);
+    ctx.lineTo(baseX, semiancho);
+    ctx.closePath();
+    ctx.fillStyle = "#ffd23f";
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#1b0f3a";
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function dibujarBowlEstatica() {
+    // Aro exterior, símil madera oscura
     ctx.beginPath();
     ctx.arc(centro, centro, radioBowlExt, 0, Math.PI * 2);
     const madera = ctx.createRadialGradient(centro, centro, radioBowlInt, centro, centro, radioBowlExt);
@@ -355,28 +400,33 @@
     ctx.fillStyle = madera;
     ctx.fill();
 
+    // Aro dorado decorativo
     ctx.beginPath();
     ctx.arc(centro, centro, radioBowlInt, 0, Math.PI * 2);
     ctx.lineWidth = 5;
     ctx.strokeStyle = "#d4af37";
     ctx.stroke();
 
+    // Pista por la que corre la bola (anillo metálico/madera claro)
     ctx.beginPath();
     ctx.arc(centro, centro, (radioBowlInt + radioDiamantes) / 2, 0, Math.PI * 2);
     ctx.lineWidth = radioBowlInt - radioDiamantes;
     ctx.strokeStyle = "#6b4a26";
     ctx.stroke();
 
+    // Deflectores metálicos fijos, repartidos en la pista
     for (let i = 0; i < numDiamantes; i++) {
       const ang = (i * 360 / numDiamantes) * Math.PI / 180;
       const x = centro + radioDiamantes * Math.cos(ang);
       const y = centro + radioDiamantes * Math.sin(ang);
       dibujarDiamante(x, y, ang);
     }
+
+    dibujarMarcador();
   }
 
   /* --------------------------------------------------------------------- */
-  /* 2) PARTE GIRATORIA                                                    */
+  /* 2) PARTE GIRATORIA: sectores de colores + separadores + texto         */
   /* --------------------------------------------------------------------- */
   function dibujarRuedaGiratoria(rotacionGrados) {
     ctx.save();
@@ -389,6 +439,7 @@
       const fin = ((i + 1) * anguloSector) * Math.PI / 180;
       const color = opcion.color || paletaColores[i % paletaColores.length];
 
+      // Sector de color
       ctx.beginPath();
       ctx.moveTo(centro, centro);
       ctx.arc(centro, centro, radioRueda, inicio, fin);
@@ -396,6 +447,7 @@
       ctx.fillStyle = color;
       ctx.fill();
 
+      // Separador metálico entre sectores (el "tope" contra el nombre)
       ctx.save();
       ctx.translate(centro, centro);
       ctx.rotate(inicio);
@@ -407,6 +459,7 @@
       ctx.stroke();
       ctx.restore();
 
+      // Nombre de la bebida
       ctx.save();
       ctx.translate(centro, centro);
       ctx.rotate((inicio + fin) / 2);
@@ -417,12 +470,14 @@
       ctx.restore();
     });
 
+    // Aro exterior de la rueda giratoria
     ctx.beginPath();
     ctx.arc(centro, centro, radioRueda, 0, Math.PI * 2);
     ctx.lineWidth = 4;
     ctx.strokeStyle = "#1b0f3a";
     ctx.stroke();
 
+    // Cubo metálico central (asoma justo alrededor del logo)
     ctx.beginPath();
     ctx.arc(centro, centro, radioCubo, 0, Math.PI * 2);
     ctx.fillStyle = "#d4af37";
@@ -435,7 +490,7 @@
   }
 
   /* --------------------------------------------------------------------- */
-  /* 3) LA BOLA                                                            */
+  /* 3) LA BOLA                                                             */
   /* --------------------------------------------------------------------- */
   function dibujarBola(anguloGrados, radioPx, alturaPx) {
     const anguloRad = anguloGrados * Math.PI / 180;
@@ -443,6 +498,7 @@
     const y = centro + radioPx * Math.sin(anguloRad);
     const radioBolita = 9;
 
+    // Sombra proyectada (se encoge cuanto más "salta" la bola)
     const escalaSombra = 1 - Math.min(alturaPx / 18, 0.6);
     ctx.save();
     ctx.beginPath();
@@ -451,6 +507,7 @@
     ctx.fill();
     ctx.restore();
 
+    // La bola, desplazada hacia arriba según su "altura" (efecto 3D)
     const yBola = y - alturaPx;
     const brillo = ctx.createRadialGradient(
       x - radioBolita * 0.35, yBola - radioBolita * 0.35, radioBolita * 0.1,
@@ -472,52 +529,82 @@
   }
 
   /* --------------------------------------------------------------------- */
-  /* Utilidades                                                            */
+  /* Utilidades de easing y ángulos                                        */
   /* --------------------------------------------------------------------- */
   function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
   function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
   function normalizar360(g) { return ((g % 360) + 360) % 360; }
 
+  // Estado persistente entre giros (para que el movimiento siempre
+  // continúe desde donde se quedaron la rueda y la bola)
   let rotacionRuedaActual = 0;
-  let anguloBolaActual = anguloSector * 0.5;
-  let anguloObjetivoLocalGlobal = anguloSector * 0.5; // Guardamos la posición local para la bola
+  let anguloBolaActual = ANGULO_MARCADOR; // la bola siempre reposa en el marcador
 
   /* --------------------------------------------------------------------- */
-  /* LÓGICA DEL GIRO                                                       */
-  /* --------------------------------------------------------------------- */
+  /* LÓGICA DEL GIRO                                                        */
+  /* -------------------------------------------------------------------------
+     DISEÑO: en vez de que la bola tenga que "encontrarse" en pleno vuelo
+     con un sector que se está moviendo (lo que obligaba a predecir dónde
+     estaría la rueda en un instante futuro exacto, y era muy fácil de
+     desincronizar), aquí el ganador se decide de otra forma, imposible
+     de desajustar:
+
+       1. Se elige el sector ganador (un ángulo LOCAL, dentro de la rueda).
+       2. Se calcula la rotación final EXACTA que debe tener la rueda para
+          que ese sector quede justo bajo ANGULO_MARCADOR al detenerse.
+       3. La bola, de forma totalmente independiente, viaja por su pista
+          y siempre termina en ese mismo ANGULO_MARCADOR, que es una
+          constante fija, no un objetivo que se mueve.
+
+     Como el destino de la bola nunca depende de dónde esté la rueda en
+     cada instante, ya no hace falta ninguna sincronización: cuando ambas
+     animaciones terminan (mismo t=1), coinciden por definición.
+     ------------------------------------------------------------------------- */
   function girarRuleta() {
     if (girando) return;
     girando = true;
     btnGirar.disabled = true;
     overlay.classList.remove('visible');
 
+    // 1) Sector ganador (ángulo LOCAL, dentro del sistema de la rueda).
     const indiceGanador = Math.floor(Math.random() * numSectores);
     const centroSector = (indiceGanador + 0.5) * anguloSector;
-    const margen = anguloSector * 0.28;
-    
-    // Este valor determina dónde caerá la bola respecto al inicio de la rueda
-    anguloObjetivoLocalGlobal = normalizar360(centroSector + (Math.random() * 2 - 1) * margen);
+    const margen = anguloSector * 0.28; // no tocar los bordes del sector
+    const anguloObjetivoLocal = normalizar360(centroSector + (Math.random() * 2 - 1) * margen);
 
+    // 2) Rotación final EXACTA de la rueda para que ese sector quede bajo
+    //    el marcador fijo. "ajusteRueda" es la parte fraccionaria (0-360)
+    //    y le sumamos varias vueltas completas sólo para que se vea bien.
     const duracionMs = 7200;
-    const vueltasRueda = 4 + Math.random() * 2.5;
+    const vueltasRueda = 4 + Math.floor(Math.random() * 3); // 4, 5 o 6 vueltas completas
     const rotacionRuedaInicio = rotacionRuedaActual;
-    const deltaRueda = vueltasRueda * 360;
+    const ajusteRueda = normalizar360(ANGULO_MARCADOR - anguloObjetivoLocal - rotacionRuedaInicio);
+    const deltaRueda = vueltasRueda * 360 + ajusteRueda;
     const rotacionRuedaFinal = rotacionRuedaInicio + deltaRueda;
+    // Comprobación: normalizar360(anguloObjetivoLocal + rotacionRuedaFinal) === ANGULO_MARCADOR
 
     function rotacionRueda(t) {
       return rotacionRuedaInicio + deltaRueda * easeOutCubic(t);
     }
 
-    const p1 = 0.45;
-    const p2 = 0.82;
+    // 3) Recorrido de LA BOLA: viaja en sentido ANTIHORARIO por su pista y
+    //    su destino es siempre ANGULO_MARCADOR (constante, no depende de t).
+    const p1 = 0.45; // hasta aquí: crucero rápido por la pista exterior
+    const p2 = 0.86; // hasta aquí: caída y rebote; después, reposo total
 
-    const anguloEnganche = normalizar360(anguloObjetivoLocalGlobal + rotacionRueda(p2));
-
-    const vueltasBola = 10 + Math.random() * 4;
+    const vueltasBola = 8 + Math.floor(Math.random() * 4); // 8 a 11 vueltas completas
     const anguloBolaInicio = anguloBolaActual;
     const inicioNormalizado = normalizar360(anguloBolaInicio);
-    const ajusteFinal = normalizar360(inicioNormalizado - anguloEnganche);
-    const diferenciaAngulo = -(vueltasBola * 360 + ajusteFinal);
+    const ajusteBola = normalizar360(inicioNormalizado - ANGULO_MARCADOR);
+    const diferenciaTotal = -(vueltasBola * 360 + ajusteBola);
+    // Comprobación: normalizar360(anguloBolaInicio + diferenciaTotal) === ANGULO_MARCADOR
+
+    // Repartimos ese recorrido en dos tramos que se enlazan sin salto: el
+    // 90% de las vueltas en la fase de crucero (t<=p1) y el 10% restante
+    // en la fase de caída (p1..p2), donde frena del todo hasta pararse.
+    const diferenciaFase1 = diferenciaTotal * 0.9;
+    const diferenciaFase2 = diferenciaTotal - diferenciaFase1;
+    const anguloFinFase1 = anguloBolaInicio + diferenciaFase1;
 
     const tiempoInicio = performance.now();
 
@@ -525,41 +612,51 @@
       const transcurrido = ahora - tiempoInicio;
       const t = Math.min(transcurrido / duracionMs, 1);
 
+      // --- Rotación de la rueda ---
       const rotRueda = rotacionRueda(t);
 
+      // --- Ángulo absoluto de la bola: SIEMPRE converge a ANGULO_MARCADOR ---
       let anguloBolaAbs;
-      if (t <= p2) {
-        const t2 = t / p2;
-        let angulo = anguloBolaInicio + diferenciaAngulo * easeOutCubic(t2);
-
-        if (t > p1) {
-          const localB = (t - p1) / (p2 - p1);
-          const rebote = 9 * (1 - localB) * Math.sin(localB * 16 * Math.PI);
-          angulo += rebote;
-        }
-        anguloBolaAbs = angulo;
+      if (t <= p1) {
+        // Fase de crucero: arranca rápido y va frenando poco a poco, sin
+        // llegar a pararse del todo (le queda margen para la caída).
+        const localA = t / p1;
+        anguloBolaAbs = anguloBolaInicio + diferenciaFase1 * Math.pow(localA, 0.6);
+      } else if (t <= p2) {
+        // Fase de caída: parte de donde terminó el crucero (sin salto) y
+        // frena de forma continua hasta pararse justo en el marcador. El
+        // rebote decae a 0 exactamente cuando localB llega a 1, así que
+        // el frenado final siempre es suave.
+        const localB = (t - p1) / (p2 - p1);
+        const angulo = anguloFinFase1 + diferenciaFase2 * easeOutCubic(localB);
+        const rebote = 6 * (1 - localB) * Math.sin(localB * 14 * Math.PI);
+        anguloBolaAbs = angulo + rebote;
       } else {
-        anguloBolaAbs = anguloObjetivoLocalGlobal + rotRueda;
+        // Fase de reposo: ya frenó del todo, se queda fija en el marcador.
+        anguloBolaAbs = ANGULO_MARCADOR;
       }
 
+      // --- Radio de la bola: pista -> caída con rebotes -> reposo fijo ---
       let radioBola;
       if (t <= p1) {
-        radioBola = radioPista + Math.sin(t * 70) * 2.5;
+        radioBola = radioPista + Math.sin(t * 70) * 2.5; // ligero balanceo en la pista
       } else if (t <= p2) {
         const localB = (t - p1) / (p2 - p1);
         const caidaPrincipal = radioPista + (radioReposo - radioPista) * easeInOutCubic(localB);
         const reboteRadio = 10 * (1 - localB) * Math.abs(Math.sin(localB * 16 * Math.PI));
         radioBola = caidaPrincipal + reboteRadio;
       } else {
-        radioBola = radioReposo;
+        radioBola = radioReposo; // ya encajada
       }
 
+      // --- Altura (efecto 3D de bote), solo durante la caída ---
       let alturaBola = 0;
       if (t > p1 && t <= p2) {
         const localB = (t - p1) / (p2 - p1);
         alturaBola = 10 * (1 - localB) * Math.abs(Math.sin(localB * 16 * Math.PI));
       }
 
+      // --- Dibujado del fotograma completo ---
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       dibujarBowlEstatica();
       dibujarRuedaGiratoria(rotRueda);
@@ -568,10 +665,10 @@
       if (t < 1) {
         requestAnimationFrame(frame);
       } else {
-        // Fijamos los valores finales basados directamente en el objetivo
-        rotacionRuedaActual = rotacionRuedaFinal;
-        anguloBolaActual = anguloObjetivoLocalGlobal + rotacionRuedaActual; 
-        
+        // Rueda y bola terminan a la vez, ambas en el marcador fijo:
+        // anunciamos el resultado en el mismo instante.
+        rotacionRuedaActual = normalizar360(rotacionRuedaFinal);
+        anguloBolaActual = ANGULO_MARCADOR;
         girando = false;
         btnGirar.disabled = false;
         mostrarResultado(opcionesChupitos[indiceGanador].nombre);
@@ -581,6 +678,7 @@
     requestAnimationFrame(frame);
   }
 
+  // --- Muestra el aviso central con el chupito ganador ---
   function mostrarResultado(nombre) {
     textoResultado.textContent = `¡${nombre}!`;
     overlay.classList.add('visible');
@@ -596,6 +694,7 @@
     if (e.target === overlay) cerrarResultado();
   });
 
+  // Dibujo inicial: plato en reposo, con la bola ya encajada
   dibujarBowlEstatica();
   dibujarRuedaGiratoria(rotacionRuedaActual);
   dibujarBola(anguloBolaActual, radioReposo, 0);
